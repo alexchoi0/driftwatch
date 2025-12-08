@@ -163,3 +163,19 @@ jobs:
           name: playwright-report
           path: server/playwright-report/
           retention-days: 30
+
+  ci-success:
+    name: CI Success
+    needs: [rust, server, e2e]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.rust.result }}" != "success" ]] || \
+             [[ "${{ needs.server.result }}" != "success" ]] || \
+             [[ "${{ needs.e2e.result }}" != "success" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"
