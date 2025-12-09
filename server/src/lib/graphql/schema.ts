@@ -2,6 +2,7 @@ import { createSchema } from "graphql-yoga";
 import type { GraphQLContext } from "./context";
 import { generateApiToken, hashApiToken } from "@/lib/auth";
 import { checkThreshold } from "@/lib/services/threshold";
+import { postPRComment, updateCommitStatus } from "@/lib/services/github";
 
 const typeDefs = /* GraphQL */ `
   scalar DateTime
@@ -35,6 +36,10 @@ const typeDefs = /* GraphQL */ `
     name: String!
     description: String
     public: Boolean!
+    githubRepo: String
+    githubPrComments: Boolean!
+    githubStatusChecks: Boolean!
+    hasGithubToken: Boolean!
     createdAt: DateTime!
     updatedAt: DateTime!
     branches: [Branch!]!
@@ -154,6 +159,13 @@ const typeDefs = /* GraphQL */ `
     public: Boolean
   }
 
+  input UpdateGitHubSettingsInput {
+    githubRepo: String
+    githubToken: String
+    githubPrComments: Boolean
+    githubStatusChecks: Boolean
+  }
+
   input MetricInput {
     benchmark: String!
     measure: String!
@@ -167,6 +179,7 @@ const typeDefs = /* GraphQL */ `
     branch: String!
     testbed: String!
     gitHash: String
+    prNumber: Int
     metrics: [MetricInput!]!
   }
 
@@ -213,6 +226,7 @@ const typeDefs = /* GraphQL */ `
     dismissAlert(id: ID!): Alert!
     createApiToken(name: String!): ApiTokenResult!
     revokeApiToken(id: ID!): Boolean!
+    updateGitHubSettings(slug: String!, input: UpdateGitHubSettingsInput!): Project!
   }
 `;
 
@@ -463,6 +477,7 @@ const resolvers = {
           branch: string;
           testbed: string;
           gitHash?: string;
+          prNumber?: number;
           metrics: Array<{
             benchmark: string;
             measure: string;
@@ -506,6 +521,7 @@ const resolvers = {
           branchId: branch.id,
           testbedId: testbed.id,
           gitHash: input.gitHash,
+          prNumber: input.prNumber,
         },
       });
 
@@ -589,6 +605,32 @@ const resolvers = {
             });
           }
         }
+      }
+
+      // Check for alerts to determine status
+      const alertCount = await ctx.prisma.alert.count({
+        where: { metric: { reportId: report.id } },
+      });
+
+      // Trigger GitHub integrations asynchronously (don't block response)
+      if (input.prNumber && project.githubPrComments) {
+        postPRComment({
+          projectId: project.id,
+          prNumber: input.prNumber,
+          reportId: report.id,
+        }).catch((err) => console.error("Failed to post PR comment:", err));
+      }
+
+      if (input.gitHash && project.githubStatusChecks) {
+        const state = alertCount > 0 ? "failure" : "success";
+        const description =
+          alertCount > 0
+            ? `${alertCount} performance regression${alertCount > 1 ? "s" : ""} detected`
+            : "All benchmarks passed";
+
+        updateCommitStatus(project.id, input.gitHash, state, description).catch(
+          (err) => console.error("Failed to update commit status:", err)
+        );
       }
 
       return ctx.prisma.report.findUnique({
@@ -768,6 +810,40 @@ const resolvers = {
 
       return result.count > 0;
     },
+
+    updateGitHubSettings: async (
+      _: unknown,
+      {
+        slug,
+        input,
+      }: {
+        slug: string;
+        input: {
+          githubRepo?: string;
+          githubToken?: string;
+          githubPrComments?: boolean;
+          githubStatusChecks?: boolean;
+        };
+      },
+      ctx: GraphQLContext
+    ) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+
+      const project = await ctx.prisma.project.findFirst({
+        where: { userId: ctx.user.id, slug },
+      });
+      if (!project) throw new Error("Project not found");
+
+      return ctx.prisma.project.update({
+        where: { id: project.id },
+        data: {
+          ...(input.githubRepo !== undefined && { githubRepo: input.githubRepo || null }),
+          ...(input.githubToken !== undefined && { githubToken: input.githubToken || null }),
+          ...(input.githubPrComments !== undefined && { githubPrComments: input.githubPrComments }),
+          ...(input.githubStatusChecks !== undefined && { githubStatusChecks: input.githubStatusChecks }),
+        },
+      });
+    },
   },
 
   // Field resolvers for nested types
@@ -787,6 +863,9 @@ const resolvers = {
   },
 
   Project: {
+    hasGithubToken: (parent: { githubToken: string | null }) => {
+      return !!parent.githubToken;
+    },
     branches: async (parent: { id: string }, _: unknown, ctx: GraphQLContext) => {
       return ctx.prisma.branch.findMany({
         where: { projectId: parent.id },

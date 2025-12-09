@@ -37,24 +37,30 @@ model ApiToken {
 }
 
 model Project {
-  id          String      @id @default(uuid()) @db.Uuid
-  userId      String      @map("user_id") @db.Uuid
-  slug        String      @db.VarChar(255)
-  name        String      @db.VarChar(255)
-  description String?     @db.Text
-  public      Boolean     @default(false)
-  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  branches    Branch[]
-  testbeds    Testbed[]
-  measures    Measure[]
-  benchmarks  Benchmark[]
-  reports     Report[]
-  thresholds  Threshold[]
+  id                 String      @id @default(uuid()) @db.Uuid
+  userId             String      @map("user_id") @db.Uuid
+  slug               String      @db.VarChar(255)
+  name               String      @db.VarChar(255)
+  description        String?     @db.Text
+  public             Boolean     @default(false)
+  // GitHub integration
+  githubRepo         String?     @map("github_repo") @db.VarChar(255) // e.g., "owner/repo"
+  githubToken        String?     @map("github_token") @db.Text // encrypted PAT for posting comments
+  githubPrComments   Boolean     @default(false) @map("github_pr_comments")
+  githubStatusChecks Boolean     @default(false) @map("github_status_checks")
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branches           Branch[]
+  testbeds           Testbed[]
+  measures           Measure[]
+  benchmarks         Benchmark[]
+  reports            Report[]
+  thresholds         Threshold[]
 
   @@unique([userId, slug])
   @@index([userId])
+  @@index([githubRepo])
   @@map("projects")
 }
 
@@ -120,6 +126,7 @@ model Report {
   branchId  String   @map("branch_id") @db.Uuid
   testbedId String   @map("testbed_id") @db.Uuid
   gitHash   String?  @map("git_hash") @db.VarChar(40)
+  prNumber  Int?     @map("pr_number") // GitHub PR number for comment posting
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   branch    Branch   @relation(fields: [branchId], references: [id])
@@ -129,6 +136,7 @@ model Report {
   @@index([projectId])
   @@index([branchId])
   @@index([createdAt])
+  @@index([prNumber])
   @@map("reports")
 }
 

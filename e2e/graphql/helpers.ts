@@ -130,6 +130,10 @@ export const queries = {
         description
         public
         createdAt
+        githubRepo
+        githubPrComments
+        githubStatusChecks
+        hasGithubToken
         branches {
           id
           name
@@ -362,6 +366,18 @@ export const mutations = {
   revokeApiToken: `
     mutation RevokeApiToken($id: ID!) {
       revokeApiToken(id: $id)
+    }
+  `,
+
+  updateGitHubSettings: `
+    mutation UpdateGitHubSettings($slug: String!, $input: UpdateGitHubSettingsInput!) {
+      updateGitHubSettings(slug: $slug, input: $input) {
+        id
+        githubRepo
+        githubPrComments
+        githubStatusChecks
+        hasGithubToken
+      }
     }
   `,
 };

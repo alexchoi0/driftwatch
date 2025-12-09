@@ -88,3 +88,15 @@ export const REVOKE_API_TOKEN_MUTATION = gql`
     revokeApiToken(id: $id)
   }
 `;
+
+export const UPDATE_GITHUB_SETTINGS_MUTATION = gql`
+  mutation UpdateGitHubSettings($slug: String!, $input: UpdateGitHubSettingsInput!) {
+    updateGitHubSettings(slug: $slug, input: $input) {
+      id
+      githubRepo
+      githubPrComments
+      githubStatusChecks
+      hasGithubToken
+    }
+  }
+`;

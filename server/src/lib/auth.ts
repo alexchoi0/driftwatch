@@ -2,7 +2,7 @@ import * as crypto from "crypto";
 import { randomUUID } from "crypto";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/db/prisma";
+import { getPrisma } from "@/lib/db/prisma";
 
 export const DEV_MODE =
   process.env.DEV_MODE === "true" || process.env.DEV_MODE === "1";
@@ -23,6 +23,7 @@ export const getSession = cache(async () => {
   if (DEV_MODE) {
     // If DEV_API_TOKEN is set, look up the real user from database
     if (DEV_API_TOKEN) {
+      const prisma = await getPrisma();
       const tokenHash = hashApiToken(DEV_API_TOKEN);
       const apiToken = await prisma.apiToken.findFirst({
         where: { tokenHash },

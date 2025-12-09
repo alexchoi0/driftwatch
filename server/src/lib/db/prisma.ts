@@ -12,3 +12,8 @@ export const prisma =
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+// Async getter for prisma client (for consistency)
+export async function getPrisma(): Promise<PrismaClient> {
+  return prisma;
+}

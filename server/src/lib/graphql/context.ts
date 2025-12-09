@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db/prisma";
+import { getPrisma } from "@/lib/db/prisma";
 import {
   DEV_MODE,
   verifyJwt,
@@ -35,6 +35,7 @@ export async function createContext({
 }: {
   request: Request;
 }): Promise<GraphQLContext> {
+  const prisma = await getPrisma();
   const authHeader = request.headers.get("authorization");
   const token = extractBearerToken(authHeader);
 

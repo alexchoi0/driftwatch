@@ -19,11 +19,43 @@ pub struct RunArgs {
     #[arg(long)]
     pub hash: Option<String>,
 
+    /// GitHub PR number for posting comments (auto-detected from GITHUB_REF)
+    #[arg(long)]
+    pub pr: Option<i32>,
+
     #[arg(long)]
     pub dry_run: bool,
 
     #[arg(trailing_var_arg = true, required = true)]
     pub command: Vec<String>,
+}
+
+/// Parse PR number from GITHUB_REF environment variable format
+/// e.g., "refs/pull/123/merge" -> Some(123)
+pub fn parse_pr_from_github_ref(github_ref: &str) -> Option<i32> {
+    if github_ref.starts_with("refs/pull/") {
+        github_ref
+            .strip_prefix("refs/pull/")
+            .and_then(|s| s.split('/').next())
+            .and_then(|n| n.parse::<i32>().ok())
+            .filter(|&n| n > 0)
+    } else {
+        None
+    }
+}
+
+/// Detect PR number from environment variables
+pub fn detect_pr_number() -> Option<i32> {
+    // Try GITHUB_REF first (e.g., "refs/pull/123/merge")
+    std::env::var("GITHUB_REF")
+        .ok()
+        .and_then(|r| parse_pr_from_github_ref(&r))
+        // Also try GITHUB_PR_NUMBER if set directly
+        .or_else(|| {
+            std::env::var("GITHUB_PR_NUMBER")
+                .ok()
+                .and_then(|n| n.parse().ok())
+        })
 }
 
 pub async fn handle(args: RunArgs, api_url: &str) -> Result<()> {
@@ -43,12 +75,18 @@ pub async fn handle(args: RunArgs, api_url: &str) -> Result<()> {
             .map(|s| s.trim().to_string())
     });
 
+    // Auto-detect PR number from GitHub Actions environment
+    let pr_number = args.pr.or_else(detect_pr_number);
+
     println!("Running benchmarks...");
     println!("  Project: {}", args.project);
     println!("  Branch: {}", args.branch);
     println!("  Testbed: {}", testbed);
     if let Some(ref hash) = git_hash {
         println!("  Git hash: {}", hash);
+    }
+    if let Some(pr) = pr_number {
+        println!("  PR: #{}", pr);
     }
     println!();
 
@@ -124,6 +162,7 @@ pub async fn handle(args: RunArgs, api_url: &str) -> Result<()> {
             &args.branch,
             &testbed,
             git_hash.as_deref(),
+            pr_number,
             metrics,
         )
         .await?;
@@ -142,4 +181,48 @@ pub async fn handle(args: RunArgs, api_url: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_pr_from_github_ref_valid() {
+        assert_eq!(parse_pr_from_github_ref("refs/pull/123/merge"), Some(123));
+        assert_eq!(parse_pr_from_github_ref("refs/pull/1/merge"), Some(1));
+        assert_eq!(
+            parse_pr_from_github_ref("refs/pull/99999/merge"),
+            Some(99999)
+        );
+        assert_eq!(parse_pr_from_github_ref("refs/pull/42/head"), Some(42));
+    }
+
+    #[test]
+    fn test_parse_pr_from_github_ref_invalid() {
+        assert_eq!(parse_pr_from_github_ref("refs/heads/main"), None);
+        assert_eq!(parse_pr_from_github_ref("refs/tags/v1.0.0"), None);
+        assert_eq!(parse_pr_from_github_ref(""), None);
+        assert_eq!(parse_pr_from_github_ref("refs/pull/"), None);
+        assert_eq!(parse_pr_from_github_ref("refs/pull/abc/merge"), None);
+    }
+
+    #[test]
+    fn test_parse_pr_from_github_ref_edge_cases() {
+        // Not starting with refs/pull/
+        assert_eq!(parse_pr_from_github_ref("pull/123/merge"), None);
+        assert_eq!(parse_pr_from_github_ref(" refs/pull/123/merge"), None);
+
+        // Large PR numbers
+        assert_eq!(
+            parse_pr_from_github_ref("refs/pull/2147483647/merge"),
+            Some(2147483647)
+        );
+
+        // Negative numbers (should be rejected)
+        assert_eq!(parse_pr_from_github_ref("refs/pull/-1/merge"), None);
+
+        // Zero (should be rejected - PR numbers start at 1)
+        assert_eq!(parse_pr_from_github_ref("refs/pull/0/merge"), None);
+    }
 }

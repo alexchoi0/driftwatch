@@ -68,6 +68,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
       - name: Lint
         run: pnpm lint
 
@@ -78,15 +81,35 @@ jobs:
         run: pnpm build
         env:
           AUTH_SECRET: ci-test-secret-that-is-at-least-32-characters-long
+          NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "placeholder-anon-key"
 
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     steps:
       - uses: actions/checkout@v4
+
+      # Build CLI binary (needed for full E2E flow tests)
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-e2e-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-e2e-
+            ${{ runner.os }}-cargo-
+
+      - name: Build CLI
+        run: cargo build --release -p rabbitbench
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -102,15 +125,39 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        working-directory: server
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+        working-directory: server
+
+      - name: Push Prisma schema to local Supabase
+        run: pnpm exec prisma db push --force-reset
+        working-directory: server
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          DIRECT_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
+        working-directory: server
 
-      - name: Run e2e tests
-        run: pnpm test:e2e
+      - name: Run E2E tests
+        run: pnpm exec playwright test
+        working-directory: server
         env:
+          NODE_PATH: ${{ github.workspace }}/server/node_modules
           DEV_MODE: "true"
-          AUTH_SECRET: ci-test-secret-that-is-at-least-32-characters-long
+          AUTH_SECRET: e2e-test-secret-that-is-at-least-32-characters-long
+          DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          DIRECT_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -119,3 +166,19 @@ jobs:
           name: playwright-report
           path: server/playwright-report/
           retention-days: 30
+
+  ci-success:
+    name: CI Success
+    needs: [rust, server, e2e]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.rust.result }}" != "success" ]] || \
+             [[ "${{ needs.server.result }}" != "success" ]] || \
+             [[ "${{ needs.e2e.result }}" != "success" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"
