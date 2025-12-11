@@ -24,6 +24,12 @@
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "db:start": "docker compose -f ../docker-compose.yml up -d",
+    "db:stop": "docker compose -f ../docker-compose.yml down",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma db push --force-reset",
+    "setup": "pnpm db:start && sleep 3 && pnpm db:push && pnpm prisma generate",
     "create-test-user": "npx tsx scripts/create-test-user.ts"
   },
   "dependencies": {

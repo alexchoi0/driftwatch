@@ -19,30 +19,29 @@ Next.js application providing the web dashboard and GraphQL API for Driftwatch.
 - pnpm
 - Docker (for PostgreSQL)
 
-### Database Setup
-
-Start the PostgreSQL database:
+### Quick Start
 
 ```bash
-docker compose up -d
+# Install dependencies
+pnpm install
+
+# Start database and run migrations (requires Docker)
+pnpm setup
+
+# Start development server
+pnpm dev
 ```
 
 ### Environment Variables
 
-Copy the example file and configure:
+Create `.env.local` with:
 
 ```bash
-cp .env.example .env.local
-```
-
-Required variables:
-
-```bash
-# Database
+# Database (default for Docker Compose)
 DATABASE_URL="postgresql://driftwatch:driftwatch@localhost:5433/driftwatch"
 DIRECT_URL="postgresql://driftwatch:driftwatch@localhost:5433/driftwatch"
 
-# Better Auth
+# Better Auth (generate secret with: openssl rand -base64 32)
 BETTER_AUTH_SECRET="your-secret-key-at-least-32-characters"
 BETTER_AUTH_URL="http://localhost:3000"
 
@@ -50,22 +49,19 @@ BETTER_AUTH_URL="http://localhost:3000"
 # Callback URL: http://localhost:3000/api/auth/callback/github
 GITHUB_CLIENT_ID="your_github_client_id"
 GITHUB_CLIENT_SECRET="your_github_client_secret"
+
+# Development mode (optional - bypasses auth)
+DEV_MODE=true
 ```
 
-### Installation
+### Database Commands
 
 ```bash
-pnpm install
-```
-
-### Database Migration
-
-```bash
-# Push schema to database
-pnpm exec prisma db push
-
-# Generate Prisma client
-pnpm exec prisma generate
+pnpm db:start    # Start PostgreSQL container
+pnpm db:stop     # Stop PostgreSQL container
+pnpm db:push     # Push schema to database
+pnpm db:reset    # Reset database (drops all data)
+pnpm db:studio   # Open Prisma Studio
 ```
 
 ### Development
