@@ -11,7 +11,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name?: string | null;
-  avatarUrl?: string | null;
+  image?: string | null;
 }
 
 export interface GraphQLContext {
@@ -19,15 +19,13 @@ export interface GraphQLContext {
   user: AuthUser | null;
 }
 
-// Fallback dev user (used when no DEV_API_TOKEN is configured)
 const DEV_USER: AuthUser = {
   id: "00000000-0000-0000-0000-000000000000",
   email: "dev@localhost",
   name: "Dev User",
-  avatarUrl: null,
+  image: null,
 };
 
-// Dev API token from environment (created via `npm run create-test-user`)
 const DEV_API_TOKEN = process.env.DEV_API_TOKEN;
 
 export async function createContext({
@@ -39,22 +37,20 @@ export async function createContext({
   const authHeader = request.headers.get("authorization");
   const token = extractBearerToken(authHeader);
 
-  // Try JWT authentication first
   if (token) {
     const jwtClaims = verifyJwt(token);
     if (jwtClaims) {
-      // Upsert user from JWT claims
       const user = await prisma.user.upsert({
         where: { email: jwtClaims.email },
         create: {
           id: jwtClaims.sub,
           email: jwtClaims.email,
-          name: jwtClaims.name,
-          avatarUrl: jwtClaims.picture,
+          name: jwtClaims.name || null,
+          image: jwtClaims.picture || null,
         },
         update: {
-          name: jwtClaims.name,
-          avatarUrl: jwtClaims.picture,
+          name: jwtClaims.name || null,
+          image: jwtClaims.picture || null,
         },
       });
 
@@ -64,12 +60,11 @@ export async function createContext({
           id: user.id,
           email: user.email,
           name: user.name,
-          avatarUrl: user.avatarUrl,
+          image: user.image,
         },
       };
     }
 
-    // Try API token authentication
     const tokenHash = hashApiToken(token);
     const apiToken = await prisma.apiToken.findFirst({
       where: {
@@ -80,7 +75,6 @@ export async function createContext({
     });
 
     if (apiToken) {
-      // Update last used timestamp
       await prisma.apiToken.update({
         where: { id: apiToken.id },
         data: { lastUsedAt: new Date() },
@@ -92,15 +86,13 @@ export async function createContext({
           id: apiToken.user.id,
           email: apiToken.user.email,
           name: apiToken.user.name,
-          avatarUrl: apiToken.user.avatarUrl,
+          image: apiToken.user.image,
         },
       };
     }
   }
 
-  // Dev mode fallback - only if no token provided or token invalid
   if (DEV_MODE) {
-    // If DEV_API_TOKEN is configured, authenticate with it
     if (DEV_API_TOKEN) {
       const tokenHash = hashApiToken(DEV_API_TOKEN);
       const apiToken = await prisma.apiToken.findFirst({
@@ -115,19 +107,17 @@ export async function createContext({
             id: apiToken.user.id,
             email: apiToken.user.email,
             name: apiToken.user.name,
-            avatarUrl: apiToken.user.avatarUrl,
+            image: apiToken.user.image,
           },
         };
       }
     }
 
-    // Fallback to mock user (won't work for DB operations)
     return {
       prisma,
       user: DEV_USER,
     };
   }
 
-  // No valid authentication
   return { prisma, user: null };
 }

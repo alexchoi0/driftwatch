@@ -80,17 +80,29 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          AUTH_SECRET: ci-test-secret-that-is-at-least-32-characters-long
-          NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: "placeholder-anon-key"
+          BETTER_AUTH_SECRET: ci-test-secret-that-is-at-least-32-characters-long
+          BETTER_AUTH_URL: "http://localhost:3000"
 
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: driftwatch
+          POSTGRES_PASSWORD: driftwatch
+          POSTGRES_DB: driftwatch
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
-      # Build CLI binary (needed for full E2E flow tests)
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -127,21 +139,12 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: server
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Start local Supabase
-        run: supabase start
-        working-directory: server
-
-      - name: Push Prisma schema to local Supabase
+      - name: Push Prisma schema to database
         run: pnpm exec prisma db push --force-reset
         working-directory: server
         env:
-          DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-          DIRECT_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          DATABASE_URL: "postgresql://driftwatch:driftwatch@localhost:5433/driftwatch"
+          DIRECT_URL: "postgresql://driftwatch:driftwatch@localhost:5433/driftwatch"
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
@@ -153,11 +156,10 @@ jobs:
         env:
           NODE_PATH: ${{ github.workspace }}/server/node_modules
           DEV_MODE: "true"
-          AUTH_SECRET: e2e-test-secret-that-is-at-least-32-characters-long
-          DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-          DIRECT_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-          NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321"
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+          BETTER_AUTH_SECRET: e2e-test-secret-that-is-at-least-32-characters-long
+          BETTER_AUTH_URL: "http://localhost:3000"
+          DATABASE_URL: "postgresql://driftwatch:driftwatch@localhost:5433/driftwatch"
+          DIRECT_URL: "postgresql://driftwatch:driftwatch@localhost:5433/driftwatch"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

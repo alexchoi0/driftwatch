@@ -4,10 +4,10 @@ Next.js application providing the web dashboard and GraphQL API for Driftwatch.
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
-- **Database**: PostgreSQL (via Supabase)
+- **Framework**: Next.js 16 (App Router)
+- **Database**: PostgreSQL (via Docker Compose)
 - **ORM**: Prisma
-- **Auth**: Supabase Auth (GitHub OAuth)
+- **Auth**: Better Auth (GitHub OAuth)
 - **GraphQL**: graphql-yoga
 - **Styling**: Tailwind CSS + shadcn/ui
 
@@ -15,29 +15,41 @@ Next.js application providing the web dashboard and GraphQL API for Driftwatch.
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - pnpm
-- Supabase project
+- Docker (for PostgreSQL)
+
+### Database Setup
+
+Start the PostgreSQL database:
+
+```bash
+docker compose up -d
+```
 
 ### Environment Variables
 
-Create a `.env.local` file:
+Copy the example file and configure:
+
+```bash
+cp .env.example .env.local
+```
+
+Required variables:
 
 ```bash
 # Database
-DATABASE_URL="postgresql://..."
-DIRECT_URL="postgresql://..."
+DATABASE_URL="postgresql://driftwatch:driftwatch@localhost:5433/driftwatch"
+DIRECT_URL="postgresql://driftwatch:driftwatch@localhost:5433/driftwatch"
 
-# Supabase Auth
-NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+# Better Auth
+BETTER_AUTH_SECRET="your-secret-key-at-least-32-characters"
+BETTER_AUTH_URL="http://localhost:3000"
 
-# Auth secret for JWT signing
-AUTH_SECRET="your-random-secret-key"
-
-# Optional: Dev mode (bypasses auth)
-DEV_MODE=false
-DEV_API_TOKEN="dw_..."
+# GitHub OAuth (create at https://github.com/settings/developers)
+# Callback URL: http://localhost:3000/api/auth/callback/github
+GITHUB_CLIENT_ID="your_github_client_id"
+GITHUB_CLIENT_SECRET="your_github_client_secret"
 ```
 
 ### Installation
@@ -46,7 +58,7 @@ DEV_API_TOKEN="dw_..."
 pnpm install
 ```
 
-### Database Setup
+### Database Migration
 
 ```bash
 # Push schema to database
@@ -82,19 +94,21 @@ server/
 │   │   ├── (auth)/        # Auth pages (login, etc.)
 │   │   ├── (dashboard)/   # Dashboard pages
 │   │   ├── api/
+│   │   │   ├── auth/      # Better Auth handler
 │   │   │   └── graphql/   # GraphQL endpoint
 │   │   └── layout.tsx
 │   ├── components/
 │   │   ├── ui/            # shadcn/ui components
 │   │   └── ...            # App components
 │   └── lib/
-│       ├── auth.ts        # Auth utilities
+│       ├── auth.ts        # Better Auth configuration
+│       ├── auth-client.ts # Client-side auth
 │       ├── db/
 │       │   ├── prisma.ts  # Prisma client
 │       │   └── queries.ts # Database queries
 │       └── graphql/
 │           ├── schema.ts  # GraphQL schema
-│           └── resolvers/ # GraphQL resolvers
+│           └── context.ts # GraphQL context
 └── package.json
 ```
 
@@ -202,7 +216,7 @@ mutation {
 
 ### Web (Dashboard)
 
-Uses Supabase Auth with GitHub OAuth. Session is stored in cookies.
+Uses Better Auth with GitHub OAuth. Session is stored in cookies.
 
 ### API (CLI/CI)
 
@@ -212,7 +226,7 @@ Create tokens in the dashboard settings or via the CLI browser auth flow.
 
 ## Dev Mode
 
-For local development without Supabase:
+For local development without GitHub OAuth:
 
 ```bash
 DEV_MODE=true

@@ -1,16 +1,19 @@
 "use client";
 
-import { signIn } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 
 export function LoginButton() {
   const handleLogin = () => {
-    signIn("google");
+    authClient.signIn.social({
+      provider: "github",
+      callbackURL: "/workspaces",
+    });
   };
 
   return (
     <Button onClick={handleLogin} size="lg">
-      Sign in with Google
+      Sign in with GitHub
     </Button>
   );
 }

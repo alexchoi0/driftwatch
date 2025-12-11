@@ -7,7 +7,7 @@ import {
   generateStoragePath,
   createSignedUploadUrl,
   createSignedReadUrl,
-} from "@/lib/supabase/storage";
+} from "@/lib/storage";
 
 const typeDefs = /* GraphQL */ `
   scalar DateTime

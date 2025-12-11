@@ -103,11 +103,11 @@ export async function ensureUser(user: {
       id: user.id,
       email: user.email,
       name: user.name,
-      avatarUrl: user.image,
+      image: user.image,
     },
     update: {
       name: user.name,
-      avatarUrl: user.image,
+      image: user.image,
     },
   });
 }

@@ -8,18 +8,80 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ============================================
+// Better Auth Tables
+// ============================================
+
 model User {
-  id        String     @id @default(uuid()) @db.Uuid
-  email     String     @unique @db.VarChar(255)
-  name      String?    @db.VarChar(255)
-  avatarUrl String?    @map("avatar_url") @db.Text
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique @db.VarChar(255)
+  emailVerified Boolean   @default(false) @map("email_verified")
+  name          String?   @db.VarChar(255)
+  image         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Better Auth relations
+  sessions Session[]
+  accounts Account[]
+
+  // Application relations
   projects  Project[]
   apiTokens ApiToken[]
 
   @@map("users")
 }
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  ipAddress String?  @map("ip_address") @db.VarChar(255)
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model Account {
+  id                   String    @id @default(uuid())
+  userId               String    @map("user_id") @db.Uuid
+  accountId            String    @map("account_id")
+  providerId           String    @map("provider_id")
+  accessToken          String?   @map("access_token") @db.Text
+  refreshToken         String?   @map("refresh_token") @db.Text
+  accessTokenExpiresAt DateTime? @map("access_token_expires_at") @db.Timestamptz
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz
+  scope                String?   @db.Text
+  idToken              String?   @map("id_token") @db.Text
+  password             String?   @db.Text
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("verifications")
+}
+
+// ============================================
+// Application Tables
+// ============================================
 
 model ApiToken {
   id         String    @id @default(uuid()) @db.Uuid
@@ -43,9 +105,8 @@ model Project {
   name               String      @db.VarChar(255)
   description        String?     @db.Text
   public             Boolean     @default(false)
-  // GitHub integration
-  githubRepo         String?     @map("github_repo") @db.VarChar(255) // e.g., "owner/repo"
-  githubToken        String?     @map("github_token") @db.Text // encrypted PAT for posting comments
+  githubRepo         String?     @map("github_repo") @db.VarChar(255)
+  githubToken        String?     @map("github_token") @db.Text
   githubPrComments   Boolean     @default(false) @map("github_pr_comments")
   githubStatusChecks Boolean     @default(false) @map("github_status_checks")
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
@@ -127,7 +188,7 @@ model Report {
   branchId    String       @map("branch_id") @db.Uuid
   testbedId   String       @map("testbed_id") @db.Uuid
   gitHash     String?      @map("git_hash") @db.VarChar(40)
-  prNumber    Int?         @map("pr_number") // GitHub PR number for comment posting
+  prNumber    Int?         @map("pr_number")
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   branch      Branch       @relation(fields: [branchId], references: [id])

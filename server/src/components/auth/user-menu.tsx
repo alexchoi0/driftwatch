@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut, useSession } from "@/lib/auth-client";
+import { authClient, useSession } from "@/lib/auth-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +66,7 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer"
-          onClick={() => signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/" } } })}
+          onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/" } } })}
         >
           Sign out
         </DropdownMenuItem>
