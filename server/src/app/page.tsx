@@ -42,14 +42,14 @@ export default async function Home() {
           <div className="relative mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24 lg:py-32">
             <div className="flex flex-col items-center text-center">
               <h1 className="max-w-4xl text-2xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                Benchmark{" "}
+                Guard Your{" "}
                 <span style={{ color: BRAND_COLOR }}>
                   Performance
                 </span>
               </h1>
               <p className="mt-4 max-w-2xl text-sm text-muted-foreground sm:mt-6 sm:text-base lg:text-lg">
-                Continuous benchmarking for Rust programs. Collect, visualize,
-                and catch performance regressions before they ship.
+                Automatically track and visualize your Criterion benchmarks.
+                Get alerted when performance regresses.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:gap-4">
                 <GetStartedButton isSignedIn={!!session} />

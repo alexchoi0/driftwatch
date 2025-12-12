@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LoginForm } from "@/components/auth/login-form";
+import { RegisterForm } from "@/components/auth/register-form";
 import { getSession } from "@/lib/auth";
 
-export default async function LoginPage() {
+export default async function RegisterPage() {
   const session = await getSession();
   if (session) {
     redirect("/workspaces");
@@ -30,10 +30,10 @@ export default async function LoginPage() {
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-lg">
-              &ldquo;Driftwatch has transformed how we track performance in our Rust projects.
-              Catching regressions early has saved us countless debugging hours.&rdquo;
+              &ldquo;Start tracking your benchmark performance today.
+              Join thousands of developers who trust Driftwatch to keep their code fast.&rdquo;
             </p>
-            <footer className="text-sm text-zinc-400">A Happy Developer</footer>
+            <footer className="text-sm text-zinc-400">The Driftwatch Team</footer>
           </blockquote>
         </div>
       </div>
@@ -41,13 +41,13 @@ export default async function LoginPage() {
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-2xl font-semibold tracking-tight">
-              Sign in to your account
+              Create an account
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your email and password below to sign in
+              Enter your details below to create your account
             </p>
           </div>
-          <LoginForm />
+          <RegisterForm />
           <p className="px-8 text-center text-sm text-muted-foreground">
             By clicking continue, you agree to our{" "}
             <Link

@@ -13,7 +13,7 @@ datasource db {
 // ============================================
 
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
+  id            String    @id @default(uuid())
   email         String    @unique @db.VarChar(255)
   emailVerified Boolean   @default(false) @map("email_verified")
   name          String?   @db.VarChar(255)
@@ -34,7 +34,7 @@ model User {
 
 model Session {
   id        String   @id @default(uuid())
-  userId    String   @map("user_id") @db.Uuid
+  userId    String   @map("user_id")
   token     String   @unique
   expiresAt DateTime @map("expires_at") @db.Timestamptz
   ipAddress String?  @map("ip_address") @db.VarChar(255)
@@ -50,7 +50,7 @@ model Session {
 
 model Account {
   id                   String    @id @default(uuid())
-  userId               String    @map("user_id") @db.Uuid
+  userId               String    @map("user_id")
   accountId            String    @map("account_id")
   providerId           String    @map("provider_id")
   accessToken          String?   @map("access_token") @db.Text
@@ -85,7 +85,7 @@ model Verification {
 
 model ApiToken {
   id         String    @id @default(uuid()) @db.Uuid
-  userId     String    @map("user_id") @db.Uuid
+  userId     String    @map("user_id")
   name       String    @db.VarChar(255)
   tokenHash  String    @map("token_hash") @db.VarChar(255)
   lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz
@@ -100,7 +100,7 @@ model ApiToken {
 
 model Project {
   id                 String      @id @default(uuid()) @db.Uuid
-  userId             String      @map("user_id") @db.Uuid
+  userId             String      @map("user_id")
   slug               String      @db.VarChar(255)
   name               String      @db.VarChar(255)
   description        String?     @db.Text
