@@ -54,6 +54,7 @@ jobs:
         run: npx prisma db push
         env:
           DATABASE_URL: postgresql://driftwatch:driftwatch@localhost:5433/driftwatch
+          DIRECT_URL: postgresql://driftwatch:driftwatch@localhost:5433/driftwatch
 
       - name: Run Playwright tests
         run: npm run test:e2e
